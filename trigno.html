@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUET Maths Mock - High Difficulty Mode</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #f8f9fa;
+            --text-color: #333;
+            --border-color: #dee2e6;
+            --correct-color: #28a745;
+            --wrong-color: #dc3545;
+            --review-color: #6f42c1;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+
+        body { background-color: #f4f4f4; display: flex; flex-direction: column; height: 100vh; }
+
+        header {
+            background-color: white; padding: 15px 20px; display: flex; justify-content: space-between;
+            align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: fixed; width: 100%; top: 0; z-index: 1000;
+        }
+
+        .timer-container {
+            font-size: 1.2rem; font-weight: bold; padding: 5px 15px; border-radius: 5px; border: 2px solid #ccc; background: #fff;
+        }
+
+        .timer-warning { color: var(--wrong-color); border-color: var(--wrong-color); background: #fff0f0; animation: flash 1s infinite; }
+        @keyframes flash { 50% { opacity: 0.6; } }
+
+        .main-container { display: flex; margin-top: 70px; height: calc(100vh - 70px); }
+
+        .question-palette { width: 350px; background: white; border-left: 1px solid var(--border-color); padding: 15px; overflow-y: auto; display: flex; flex-direction: column; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+
+        .q-num-btn { height: 40px; width: 40px; border: 1px solid var(--border-color); background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; border-radius: 4px; }
+        .q-num-btn.answered { background-color: var(--correct-color); color: white; border-color: var(--correct-color); border-radius: 4px 4px 15px 4px; }
+        .q-num-btn.review { background-color: var(--review-color); color: white; border-color: var(--review-color); border-radius: 50%; }
+        .q-num-btn.current { border: 3px solid #000; font-weight: bold; transform: scale(1.05); }
+        .q-num-btn.not-answered { background-color: var(--wrong-color); color: white; border-color: var(--wrong-color); }
+
+        .question-area { flex: 1; padding: 30px; overflow-y: auto; }
+        .question-card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 900px; margin: 0 auto; }
+        
+        .option-label { display: flex; align-items: center; padding: 12px 15px; border: 2px solid var(--border-color); border-radius: 6px; cursor: pointer; margin-bottom: 10px; transition: 0.2s; }
+        .option-label.selected { border-color: var(--primary-color); background-color: #e7f1ff; }
+        
+        /* Solution Mode Styles */
+        .option-label.correct-choice { border-color: var(--correct-color); background-color: #d4edda; font-weight: bold; }
+        .option-label.wrong-choice { border-color: var(--wrong-color); background-color: #f8d7da; }
+
+        .action-buttons { display: flex; justify-content: center; gap: 10px; margin-top: 25px; }
+        .btn { padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-review { background-color: var(--review-color); color: white; }
+        .btn-clear { background-color: #6c757d; color: white; }
+        .btn-sol { background-color: #17a2b8; color: white; display: none; } /* Hidden during test */
+
+        #result-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 2000;
+        }
+
+        .result-card { background: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; text-align: center; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+        .stat-box { padding: 12px; background: #f8f9fa; border: 1px solid #ddd; text-align: left; border-radius: 6px; font-size: 0.9rem; }
+        .stat-box strong { display: block; font-size: 1.1rem; margin-bottom: 4px; }
+        .penalty-text { color: var(--wrong-color); font-weight: bold; }
+
+        /* Modal for Solution Images */
+        #sol-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 3000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 700px; width: 100%; position: relative; text-align: center; }
+        .close-modal { position: absolute; top: 10px; right: 20px; font-size: 30px; cursor: pointer; color: #333; }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .question-palette { width: 100%; height: auto; order: -1; border-left: none; border-bottom: 1px solid var(--border-color); }
+            .grid-container { grid-template-columns: repeat(10, 1fr); }
+            .action-buttons { flex-wrap: wrap; }
+            .btn { flex: 1 1 40%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>CUET Maths Mock</h1>
+            <small id="exam-desc">Marking: +5 / -1.25</small>
+        </div>
+        <div class="timer-container" id="timer">00:00:00</div>
+    </header>
+
+    <div class="main-container">
+        <div class="question-area">
+            <div class="question-card">
+                <div style="margin-bottom: 10px; color: #666;">Maths &gt; Question <span id="q-display-num">1</span></div>
+                <div class="question-text" id="question-text" style="font-size: 1.1rem; margin-bottom: 20px;"></div>
+                
+                <div id="image-container" style="text-align: center; margin-bottom: 20px;">
+                    <img id="question-image" src="" style="max-width: 100%; border: 1px solid #ccc; padding: 5px;">
+                </div>
+
+                <div class="options-container" id="options-container"></div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-clear" id="clear-btn" onclick="clearResponse()">Clear</button>
+                <button class="btn btn-review" id="review-btn" onclick="markForReview()">Review</button>
+                <button class="btn btn-sol" id="sol-btn" onclick="showSolution()">View Solution</button>
+                <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()">Save & Next</button>
+            </div>
+        </div>
+
+        <div class="question-palette">
+            <h3 style="margin-bottom: 10px;">Question Navigator</h3>
+            <div class="grid-container" id="palette-grid"></div>
+            <button class="btn btn-primary" id="final-submit-btn" style="width: 100%; background: var(--correct-color); margin-top: auto;" onclick="submitExam()">Final Submit</button>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <div class="result-card">
+            <h2>Performance Report</h2>
+            <div class="stat-grid">
+                <div class="stat-box" style="grid-column: 1/3; text-align: center; background: #eef; border-color: var(--primary-color);">
+                    <strong>Score: <span id="res-score">0</span> / 250</strong>
+                </div>
+                <div class="stat-box">Correct Answers: <strong id="res-correct" style="color:var(--correct-color)">0</strong></div>
+                <div class="stat-box">Wrong Answers: <strong id="res-wrong" style="color:var(--wrong-color)">0</strong></div>
+                <div class="stat-box" style="background: #fff3cd;">Accuracy: <strong id="res-accuracy">0%</strong></div>
+                <div class="stat-box">Total Time: <strong id="res-total-time">0</strong></div>
+                <div class="stat-box penalty-text" style="grid-column: 1/3; text-align: center;">Overtime Spent: <span id="res-penalty-time">0</span></div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" style="flex:1" onclick="location.reload()">Restart</button>
+                <button class="btn" style="flex:1; background: var(--review-color); color:white;" onclick="enterReviewMode()">Review Solutions</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sol-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeSolution()">&times;</span>
+            <h3 style="margin-bottom: 15px;">Step-by-Step Solution</h3>
+            <div style="overflow-y: auto; max-height: 70vh;">
+                <img id="solution-image" src="" style="max-width: 100%; border: 1px solid #ddd;">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const EXAM_DURATION_SECONDS = 3600; 
+        // ---------------------
+
+        const MathsData = [
+            { id: 1, text: "Question 1", image: "images/q (1).png", solutionImage: "solutions/sol (1).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 2, text: "Question 2", image: "images/q (2).png", solutionImage: "solutions/sol (2).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 3, text: "Question 3", image: "images/q (3).png", solutionImage: "solutions/sol (3).png", options: ["A", "B", "C", "D"], answer: 1 },
+            { id: 4, text: "Question 4", image: "images/q (4).png", solutionImage: "solutions/sol (4).png", options: ["(A) - (I), (B) - (II), (C) - (III), (D) - (IV)", "(A) - (I), (B) - (III), (C) - (II), (D) - (IV)", "(A) - (I), (B) - (II), (C) - (IV), (D) - (III)", "(A) - (III), (B) - (IV), (C) - (I), (D) - (II)"], answer: 2 },
+            { id: 5, text: "Question 5", image: "images/q (5).png", solutionImage: "solutions/sol (5).png", options: ["(A) - (II), (B) - (IV), (C) - (I), (D) - (III)", "(A) - (II), (B) - (III), (C) - (I), (D) - (IV)", "(A) - (I), (B) - (IV), (C) - (II), (D) - (III)", "(A) - (I), (B) - (III), (C) - (II), (D) - (IV)"], answer: 1 },
+            { id: 6, text: "Question 6", image: "images/q (6).png", solutionImage: "solutions/sol (6).png", options: ["(A), (B) and (D) only", "(B) and (C) only", "(A), (C) and (D) only", "(B), (C) and (D) only"], answer: 4 },
+            { id: 7, text: "Question 7", image: "images/q (7).png", solutionImage: "solutions/sol (7).png", options: ["A", "B", "C", "D"], answer: 4 },
+            { id: 8, text: "Question 8", image: "images/q (8).png", solutionImage: "solutions/sol (8).png", options: ["(A), (B) and (D) only", "(A), (B) and (C) only", "(A) and (B) only", "(B) and (C) only"], answer: 2 },
+            { id: 9, text: "Question 9", image: "images/q (9).png", solutionImage: "solutions/sol (9).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 10, text: "Question 10", image: "images/q (10).png", solutionImage: "solutions/sol (10).png", options: ["(A), (B) and (D) only", "(A), (B) and (C) only", "(C) and (D) only", "(B), (C) and (D) only"], answer: 2 },
+            { id: 11, text: "Question 11", image: "images/q (11).png", solutionImage: "solutions/sol (11).png", options: ["A", "B", "C", "D"], answer: 3 },
+            { id: 12, text: "Question 12", image: "images/q (12).png", solutionImage: "solutions/sol (12).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 13, text: "Question 13", image: "images/q (13).png", solutionImage: "solutions/sol (13).png", options: ["A", "B", "C", "D"], answer: 1 },
+            { id: 14, text: "Question 14", image: "images/q (14).png", solutionImage: "solutions/sol (14).png", options: ["(A) - (III), (B) - (IV), (C) - (I), (D) - (II)", "(A) - (III), (B) - (IV), (C) - (II), (D) - (I)", "(A) - (IV), (B) - (III), (C) - (III), (D) - (I)", "(A) - (IV), (B) - (III), (C) - (I), (D) - (II)"], answer: 1 },
+            { id: 15, text: "Question 15", image: "images/q (15).png", solutionImage: "solutions/sol (15).png", options: ["A", "B", "C", "D"], answer: 4 },
+            { id: 16, text: "Question 16", image: "images/q (16).png", solutionImage: "solutions/sol (16).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 17, text: "Question 17", image: "images/q (17).png", solutionImage: "solutions/sol (17).png", options: ["(A) - (IV), (B) - (III), (C) - (II), (D) - (I)", "(A) - (III), (B) - (IV), (C) - (II), (D) - (I)", "(A) - (III), (B) - (II), (C) - (IV), (D) - (I)", "(A) - (I), (B) - (II), (C) - (IV), (D) - (III)"], answer: 2 },
+            { id: 18, text: "Question 18", image: "images/q (18).png", solutionImage: "solutions/sol (18).png", options: ["(A) - (II), (B) - (I), (C) - (III), (D) - (IV)", "(A) - (I), (B) - (II), (C) - (III), (D) - (IV)", "(A) - (III), (B) - (IV), (C) - (II), (D) - (I)", "(A) - (IV), (B) - (III), (C) - (II), (D) - (I)"], answer: 4 },
+            { id: 19, text: "Question 19", image: "images/q (19).png", solutionImage: "solutions/sol (19).png", options: ["(A) - (IV), (B) - (I), (C) - (II), (D) - (III)", "(A) - (I), (B) - (II), (C) - (III), (D) - (IV)", "(A) - (II), (B) - (III), (C) - (IV), (D) - (I)", "(A) - (III), (B) - (IV), (C) - (I), (D) - (II)"], answer: 3 },
+            { id: 20, text: "Question 20", image: "images/q (20).png", solutionImage: "solutions/sol (20).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 21, text: "Question 21", image: "images/q (21).png", solutionImage: "solutions/sol (21).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 22, text: "Question 22", image: "images/q (22).png", solutionImage: "solutions/sol (22).png", options: ["A", "B", "C", "D"], answer: 3 },
+            { id: 23, text: "Question 23", image: "images/q (23).png", solutionImage: "solutions/sol (23).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 24, text: "Question 24", image: "images/q (24).png", solutionImage: "solutions/sol (24).png", options: ["A", "B", "C", "D"], answer: 3 },
+            { id: 25, text: "Question 25", image: "images/q (25).png", solutionImage: "solutions/sol (25).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 26, text: "Question 26", image: "images/q (26).png", solutionImage: "solutions/sol (26).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 27, text: "Question 27", image: "images/q (27).png", solutionImage: "solutions/sol (27).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 28, text: "Question 28", image: "images/q (28).png", solutionImage: "solutions/sol (28).png", options: ["A", "B", "C", "D"], answer: 4 },
+            { id: 29, text: "Question 29", image: "images/q (29).png", solutionImage: "solutions/sol (29).png", options: ["(A), (B), (C), (D)", "(A), (D), (B), (C)", "(B), (D), (A), (C)", "(D), (A), (B), (C)"], answer: 3 },
+            { id: 30, text: "Question 30", image: "images/q (30).png", solutionImage: "solutions/sol (30).png", options: ["A", "B", "C", "D"], answer: 3 },
+            { id: 31, text: "Question 31", image: "images/q (31).png", solutionImage: "solutions/sol (31).png", options: ["(A) - (I), (B) - (II), (C) - (III), (D) - (IV)", "(A) - (III), (B) - (I), (C) - (II), (D) - (IV)", "(A) - (II), (B) - (IV), (C) - (I), (D) - (III)", "(A) - (IV), (B) - (I), (C) - (III), (D) - (II)"], answer: 2 },
+            { id: 32, text: "Question 32", image: "images/q (32).png", solutionImage: "solutions/sol (32).png", options: ["(A) - (III), (B) - (II), (C) - (I), (D) - (IV)", "(A) - (III), (B) - (I), (C) - (II), (D) - (IV)", "(A) - (III), (B) - (IV), (C) - (I), (D) - (II)", "(A) - (III), (B) - (II), (C) - (IV), (D) - (I)"], answer: 2 },
+            { id: 33, text: "Question 33", image: "images/q (33).png", solutionImage: "solutions/sol (33).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 34, text: "Question 34", image: "images/q (34).png", solutionImage: "solutions/sol (34).png", options: ["A", "B", "C", "D"], answer: 4 },
+            { id: 35, text: "Question 35", image: "images/q (35).png", solutionImage: "solutions/sol (35).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 36, text: "Question 36", image: "images/q (36).png", solutionImage: "solutions/sol (36).png", options: ["(A), (B) and (C) only", "(A), (B) and (D) only", "(C) and (D) only", "(B) and (D) only"], answer: 1 },
+            { id: 37, text: "Question 37", image: "images/q (37).png", solutionImage: "solutions/sol (37).png", options: ["(A) - (I), (B) - (III), (C) - (II), (D) - (IV)", "(A) - (II), (B) - (IV), (C) - (I), (D) - (III)", "(A) - (III), (B) - (I), (C) - (II), (D) - (IV)", "(A) - (IV), (B) - (II), (C) - (I), (D) - (III)"], answer: 3 },
+            { id: 38, text: "Question 38", image: "images/q (38).png", solutionImage: "solutions/sol (38).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 39, text: "Question 39", image: "images/q (39).png", solutionImage: "solutions/sol (39).png", options: ["A", "B", "C", "D"], answer: 3 },
+            { id: 40, text: "Question 40", image: "images/q (40).png", solutionImage: "solutions/sol (40).png", options: ["A", "B", "C", "D"], answer: 4 },
+            { id: 41, text: "Question 41", image: "images/q (41).png", solutionImage: "solutions/sol (41).png", options: ["A", "B", "C", "D"], answer: 3 },
+            { id: 42, text: "Question 42", image: "images/q (42).png", solutionImage: "solutions/sol (42).png", options: ["A", "B", "C", "D"], answer: 3 },
+            { id: 43, text: "Question 43", image: "images/q (43).png", solutionImage: "solutions/sol (43).png", options: ["A", "B", "C", "D"], answer: 1 },
+            { id: 44, text: "Question 44", image: "images/q (44).png", solutionImage: "solutions/sol (44).png", options: ["(B), (C) and (D) only", "(A) and (B) only", "(C) and (D) only", "(A) only"], answer: 4 },
+            { id: 45, text: "Question 45", image: "images/q (45).png", solutionImage: "solutions/sol (45).png", options: ["A", "B", "C", "D"], answer: 4 },
+            { id: 46, text: "Question 46", image: "images/q (46).png", solutionImage: "solutions/sol (46).png", options: ["A", "B", "C", "D"], answer: 1 },
+            { id: 47, text: "Question 47", image: "images/q (47).png", solutionImage: "solutions/sol (47).png", options: ["(B) and (D) only", "(A) and (C) only", "(A), (B) and (C) only", "(D) only"], answer: 1 },
+            { id: 48, text: "Question 48", image: "images/q (48).png", solutionImage: "solutions/sol (48).png", options: ["A", "B", "C", "D"], answer: 3 },
+            { id: 49, text: "Question 49", image: "images/q (49).png", solutionImage: "solutions/sol (49).png", options: ["A", "B", "C", "D"], answer: 2 },
+            { id: 50, text: "Question 50", image: "images/q (50).png", solutionImage: "solutions/sol (50).png", options: ["A", "B", "C", "D"], answer: 3 },
+        ];
+
+        let currentIndex = 0;
+        let userAnswers = {};
+        let reviewMarkers = {};
+        let visited = { 0: true };
+        let elapsedSecs = 0;
+        let isOvertime = false;
+        let isReviewMode = false;
+        let timerInterval;
+
+        window.onload = () => {
+            document.getElementById('exam-desc').innerHTML += ` | ${Math.floor(EXAM_DURATION_SECONDS/60)} Min`;
+            loadQuestion();
+            renderPalette();
+            startTimer();
+        };
+
+        function startTimer() {
+            const timerDiv = document.getElementById('timer');
+            timerInterval = setInterval(() => {
+                elapsedSecs++;
+                let displaySecs = 0;
+                let sign = "";
+
+                if (elapsedSecs <= EXAM_DURATION_SECONDS) {
+                    displaySecs = EXAM_DURATION_SECONDS - elapsedSecs;
+                } else {
+                    if (!isOvertime) {
+                        isOvertime = true;
+                        timerDiv.classList.add('timer-warning');
+                        alert("Official Time's Up! Penalty tracking active.");
+                    }
+                    displaySecs = elapsedSecs - EXAM_DURATION_SECONDS;
+                    sign = "- ";
+                }
+
+                let h = Math.floor(displaySecs / 3600).toString().padStart(2, '0');
+                let m = Math.floor((displaySecs % 3600) / 60).toString().padStart(2, '0');
+                let s = (displaySecs % 60).toString().padStart(2, '0');
+                timerDiv.textContent = sign + `${h}:${m}:${s}`;
+            }, 1000);
+        }
+
+        function loadQuestion() {
+            const q = MathsData[currentIndex];
+            visited[currentIndex] = true;
+            document.getElementById('q-display-num').textContent = currentIndex + 1;
+            document.getElementById('question-text').textContent = q.text;
+            document.getElementById('question-image').src = q.image;
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            q.options.forEach((opt, i) => {
+                const val = i + 1;
+                const label = document.createElement('label');
+                label.className = 'option-label';
+                
+                // Review mode styling
+                if (isReviewMode) {
+                    if (val === q.answer) {
+                        label.classList.add('correct-choice');
+                    } else if (userAnswers[currentIndex] === val) {
+                        label.classList.add('wrong-choice');
+                    }
+                } else if (userAnswers[currentIndex] === val) {
+                    label.classList.add('selected');
+                }
+                
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'choice';
+                input.checked = userAnswers[currentIndex] === val;
+                input.disabled = isReviewMode; // Disable clicking in review
+                
+                input.onchange = () => {
+                    userAnswers[currentIndex] = val;
+                    delete reviewMarkers[currentIndex];
+                    loadQuestion();
+                    renderPalette();
+                };
+
+                label.appendChild(input);
+                label.appendChild(document.createTextNode(" " + opt));
+                container.appendChild(label);
+            });
+        }
+
+        function renderPalette() {
+            const grid = document.getElementById('palette-grid');
+            grid.innerHTML = '';
+            MathsData.forEach((_, i) => {
+                const btn = document.createElement('button');
+                let status = (i === currentIndex) ? 'current ' : '';
+                
+                if (isReviewMode) {
+                    // Highlight correct/incorrect in palette
+                    if (!userAnswers[i]) status += '';
+                    else if (userAnswers[i] === MathsData[i].answer) status += 'answered';
+                    else status += 'not-answered';
+                } else {
+                    if (reviewMarkers[i]) status += 'review';
+                    else if (userAnswers[i]) status += 'answered';
+                    else if (visited[i]) status += 'not-answered';
+                }
+
+                btn.className = `q-num-btn ${status}`;
+                btn.textContent = i + 1;
+                btn.onclick = () => { currentIndex = i; loadQuestion(); renderPalette(); };
+                grid.appendChild(btn);
+            });
+        }
+
+        function nextQuestion() { if (currentIndex < 49) { currentIndex++; loadQuestion(); renderPalette(); } }
+        function clearResponse() { delete userAnswers[currentIndex]; delete reviewMarkers[currentIndex]; loadQuestion(); renderPalette(); }
+        function markForReview() { reviewMarkers[currentIndex] = true; renderPalette(); nextQuestion(); }
+
+        function formatDisplayTime(s) {
+            let m = Math.floor(s / 60);
+            let sec = s % 60;
+            return `${m}m ${sec}s`;
+        }
+
+        function submitExam() {
+            if (!confirm("Confirm Final Submission?")) return;
+            clearInterval(timerInterval);
+
+            let score = 0, correct = 0, wrong = 0;
+            MathsData.forEach((q, i) => {
+                if (userAnswers[i] === q.answer) { correct++; score += 5; }
+                else if (userAnswers[i]) { wrong++; score -= 1.25; }
+            });
+
+            const attempted = correct + wrong;
+            const accuracy = attempted > 0 ? ((correct / attempted) * 100).toFixed(1) : 0;
+
+            document.getElementById('res-score').textContent = score.toFixed(2);
+            document.getElementById('res-correct').textContent = correct;
+            document.getElementById('res-wrong').textContent = wrong;
+            document.getElementById('res-accuracy').textContent = accuracy + "%";
+            document.getElementById('res-total-time').textContent = formatDisplayTime(elapsedSecs);
+            
+            let penalty = Math.max(0, elapsedSecs - EXAM_DURATION_SECONDS);
+            document.getElementById('res-penalty-time').textContent = penalty > 0 ? formatDisplayTime(penalty) : "None";
+            
+            document.getElementById('result-screen').style.display = 'flex';
+        }
+
+        // --- NEW REVIEW FUNCTIONS ---
+        function enterReviewMode() {
+            isReviewMode = true;
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('clear-btn').style.display = 'none';
+            document.getElementById('review-btn').style.display = 'none';
+            document.getElementById('final-submit-btn').style.display = 'none';
+            document.getElementById('sol-btn').style.display = 'inline-block';
+            currentIndex = 0;
+            loadQuestion();
+            renderPalette();
+        }
+
+        function showSolution() {
+            const q = MathsData[currentIndex];
+            document.getElementById('solution-image').src = q.solutionImage;
+            document.getElementById('sol-modal').style.display = 'flex';
+        }
+
+        function closeSolution() {
+            document.getElementById('sol-modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
